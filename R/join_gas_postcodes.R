@@ -10,14 +10,11 @@ gas$gas_kwh_total <- round(gas$gas_kwh_total)
 gas$gas_kwh_mean <- round(gas$gas_kwh_mean)
 gas$gas_kwh_median <- round(gas$gas_kwh_median)
 
-elec <- read.csv("data/electric/Postcode_level_all_meters_electricity_2020.csv")
-names(elec) <- c("POSTCODE","elec_meters","elec_kwh_total","elec_kwh_mean","elec_kwh_median")
+elec <- readRDS("data/electric/electric_merged.Rds")
 
-elec$elec_kwh_total <- round(elec$elec_kwh_total)
-elec$elec_kwh_mean <- round(elec$elec_kwh_mean)
-elec$elec_kwh_median <- round(elec$elec_kwh_median)
 
-postcodes_all <- readRDS("data/postcode_areas_all.Rds")
+postcodes_all <- readRDS("E:/Users/earmmor/OneDrive - University of Leeds/Data/Postcodes/Postcode Polygons/postcode_areas_all.Rds")
+#postcodes_all <- readRDS("data/postcode_areas_all.Rds")
 postcodes_all <- st_as_sf(postcodes_all)
 
 summary(elec$POSTCODE %in% gas$POSTCODE)
@@ -38,8 +35,8 @@ gaselec$coverage[is.na(gaselec$gas_meters) & !is.na(gaselec$elec_meters)] <- "el
 
 table(gaselec$coverage)
 
-gaselec_notpc <- gaselec[!gaselec$nchar %in% 6:8,]
-gaselec_pc <- gaselec[gaselec$nchar %in% 6:8,]
+gaselec_notpc <- gaselec[gaselec$nchar < 6,]
+gaselec_pc <- gaselec[gaselec$nchar >= 6,]
 
 table(gaselec_notpc$coverage)
 table(gaselec_pc$coverage)
@@ -47,7 +44,7 @@ table(gaselec_pc$coverage)
 
 summary(gaselec_pc$POSTCODE %in% postcodes_all$POSTCODE)
 summary(postcodes_all$POSTCODE %in% gaselec_pc$POSTCODE)
-# 17685 invlaid postcodes?
+# 20063 invlaid postcodes?
 foo = gaselec_pc[!gaselec_pc$POSTCODE %in% postcodes_all$POSTCODE,]
 bar = st_drop_geometry(postcodes_all[!postcodes_all$POSTCODE %in% gaselec_pc$POSTCODE,])
 bar$geometry <- NULL
@@ -68,41 +65,42 @@ bar$geometry <- NULL
 # 
 # saveRDS(outcodes, "data/outcode_areas.Rds")
 
-outcodes <- readRDS("data/outcode_areas.Rds")
-outcodes <- outcodes[outcodes$outcode %in% gaselec_notpc$POSTCODE,]
-
-outcodes_dis <- list()
-
-outcode <- strsplit(gaselec_pc$POSTCODE," ")
-outcode <- sapply(outcode, `[[`, 1)
-gaselec_pc$outcode <- outcode
-
-for(i in 1:nrow(outcodes)){
-  oc <- outcodes[i,]
-  if(i %% 100 == 0){
-    message(i," ",oc$outcode)
-  }
-  
-  pc <- gaselec_pc[gaselec_pc$outcode == oc$outcode,]
-  pc <- postcodes_all[postcodes_all$POSTCODE %in% pc$POSTCODE,]
-  
-  #qtm(oc, fill = NULL) + qtm(pc)
-  pc <- st_combine(pc$geometry)
-  
-  oc_dis <- st_difference(oc, pc)
-  outcodes_dis[[i]] <- oc_dis
-}
-
-outcodes_dis <- dplyr::bind_rows(outcodes_dis)
-names(outcodes_dis) <- names(postcodes_all)
-postcodes_all <- rbind(postcodes_all, outcodes_dis)
+# outcodes <- readRDS("data/outcode_areas.Rds")
+# outcodes <- outcodes[outcodes$outcode %in% gaselec_notpc$POSTCODE,]
+# 
+# outcodes_dis <- list()
+# 
+# outcode <- strsplit(gaselec_pc$POSTCODE," ")
+# outcode <- sapply(outcode, `[[`, 1)
+# gaselec_pc$outcode <- outcode
+# 
+# for(i in 1:nrow(outcodes)){
+#   oc <- outcodes[i,]
+#   if(i %% 100 == 0){
+#     message(i," ",oc$outcode)
+#   }
+#   
+#   pc <- gaselec_pc[gaselec_pc$outcode == oc$outcode,]
+#   pc <- postcodes_all[postcodes_all$POSTCODE %in% pc$POSTCODE,]
+#   
+#   #qtm(oc, fill = NULL) + qtm(pc)
+#   pc <- st_combine(pc$geometry)
+#   
+#   oc_dis <- st_difference(oc, pc)
+#   outcodes_dis[[i]] <- oc_dis
+# }
+# 
+# outcodes_dis <- dplyr::bind_rows(outcodes_dis)
+# names(outcodes_dis) <- names(postcodes_all)
+# postcodes_all <- rbind(postcodes_all, outcodes_dis)
 
 
 gaselec_pc <- left_join(gaselec_pc, postcodes_all, by = "POSTCODE")
-gaselec_notpc <- left_join(gaselec_notpc, postcodes_all, by = "POSTCODE")
-gaselec_pc$outcode <- NULL
+# gaselec_notpc <- left_join(gaselec_notpc, postcodes_all, by = "POSTCODE")
+# gaselec_pc$outcode <- NULL
 
-gaselec_all <- rbind(gaselec_pc, gaselec_notpc)
+# gaselec_all <- rbind(gaselec_pc, gaselec_notpc)
+gaselec_all <- gaselec_pc
 
 gaselec_all <- gaselec_all[!st_is_empty(gaselec_all$geometry),]
 gaselec_all <- st_as_sf(gaselec_all)
@@ -121,7 +119,7 @@ gaselec_all <- gaselec_all[,c("POSTCODE",
                          "geometry")]
 gaselec_all[2:9] <- lapply(st_drop_geometry(gaselec_all[2:9]), as.integer)
 gaselec_all <- st_transform(gaselec_all, 4326)
-summary(st_is_valid(gas_pc))
+summary(st_is_valid(gaselec_all))
 
 st_precision(gaselec_all) <- 1000000
 st_write(gaselec_all, "data/tiles/gas_electric_postcodes.geojson", delete_dsn = TRUE)
