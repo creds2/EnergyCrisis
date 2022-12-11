@@ -20,17 +20,27 @@ certs <- certs[,c("BUILDING_REFERENCE_NUMBER","ADDRESS1","CURRENT_ENERGY_RATING"
 
 # Get most recent EPC
 
-certs <- certs[!is.na(certs$UPRN),]
+#foo <- certs[grepl("Kite House",certs$ADDRESS1),]
 
+certs <- certs[!is.na(certs$UPRN),]
 certs <- certs[order(certs$INSPECTION_DATE, decreasing = TRUE),]
-certs <- certs[!duplicated(certs$BUILDING_REFERENCE_NUMBER),]
+#certs <- certs[!duplicated(certs$BUILDING_REFERENCE_NUMBER),] 
+certs <- certs[!duplicated(certs$UPRN),] 
+
+#22627924 - all
+# summary(duplicated(certs$BUILDING_REFERENCE_NUMBER))
+# Mode    FALSE     TRUE 
+# logical 18260045  4367879
+
+# summary(duplicated(certs$UPRN))
+# Mode    FALSE     TRUE 
+# logical 16905672  5722252 
+
 
 uprn <- readr::read_csv("D:/OneDrive - University of Leeds/Data/OS/Open UPRN/osopenuprn_202207_csv/osopenuprn_202206.csv")
 uprn <- uprn[,c("UPRN","LATITUDE","LONGITUDE")]
 #uprn <- uprn[uprn$UPRN %in% certs$UPRN,]
 uprn <- st_as_sf(uprn, coords = c("LONGITUDE","LATITUDE"), crs = 4326)
-
-
 
 
 certs$buidling_type <- paste0(certs$BUILT_FORM," ",certs$PROPERTY_TYPE)
@@ -182,7 +192,9 @@ names(certs) <- c("addr","cur_rate","cur_ee","per_ee",
 # y <- certs2[1:100000,]
 # 
 # system.time(x <- geojsonsf::sf_geojson(y, atomise = TRUE))
-write_sf(certs, "data/tiles/epc.geojson", delete_dsn = TRUE)
+write_sf(certs, "data/tiles/epc2.geojson", delete_dsn = TRUE)
+
+#certs <- geojsonsf::geojson_sf("data/tiles/epc.geojson")
 
 # Wiggle potion of overlapping points
 certs$dup <- duplicated(certs$geometry)
@@ -195,21 +207,27 @@ wiggle <- function(x){
   x[[2]] <- x[[2]] + round(runif(1,-0.00005,0.00005),6)
   x
 }
-x
-wiggle(x)
-
-y <- st_as_sfc(list(x, wiggle(x)))
-st_crs(y) <- 4326
-qtm(y)
+# x
+# wiggle(x)
+# 
+# y <- st_as_sfc(list(x, wiggle(x)))
+# st_crs(y) <- 4326
+# qtm(y)
 
 certs_dup2 <- lapply(certs_dup$geometry, wiggle)
 certs_dup2 <- st_as_sfc(certs_dup2)
 st_crs(certs_dup2) <- 4326
 
 certs_dup$geometry <- certs_dup2
-
 certs_all <- rbind(certs, certs_dup)
-write_sf(certs_all, "data/tiles/epc_wiggle.geojson", delete_dsn = TRUE)
+certs_all$dup <- NULL
+names(certs_all)
+
+write_sf(certs_all, "C:/tiles/epc/epc_wiggle2.geojson", delete_dsn = TRUE)
+
+certs_sample <- certs_all[sample(1:nrow(certs_all),nrow(certs_all)/10),]
+
+write_sf(certs_sample, "C:/tiles/epc/epc_wiggle_sample2.geojson", delete_dsn = TRUE)
 
 #write_geojson(certs, "data/tiles/epc.geojson")
 

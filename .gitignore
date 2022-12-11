@@ -37,3 +37,13 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+data/epc_all_clean.Rds
+data/epc_all_raw.Rds
+data/outcode_areas.Rds
+data/postcode_areas_all.Rds
+data/tiles/epc.geojson
+data/tiles/epc_wiggle_high.mbtiles
+data/tiles/gas_electric_postcodes.geojson
+data/tiles/postcode.mbtiles
+data/tiles/postcodelow.mbtiles
+*.pbf
